@@ -7,13 +7,14 @@ import pygame
 import sys
 
 # Import the algorithms and maze generation functions
-from ai_algorithms import dfs, bfs, a_star
+from ai_algorithms import dfs
 from maze_generation import generate_maze
 
 pygame.init()
 
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
+BLOCK_SIZE = 40
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Maze Solver")
@@ -33,7 +34,26 @@ SETTINGS = 3
 LEADERBOARD = 4
 EXIT = -1
 
-current_state = MENU
+current_state = GAME
+
+# Maze representation
+# 1 = wall
+# 0 = path
+# [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1]
+# [0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]
+# [0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]
+# [0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1]
+# [0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+# [1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1]
+# [0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1]
+# [1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1]
+# [0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+# [0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1]
+# [0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1]
+# [0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1]
+# [0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1]
+# [0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1]
+# [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]
 
 
 def main():
@@ -61,7 +81,7 @@ def main():
 
         # Update the display
         pygame.display.flip()
-        clock.tick(60)
+        clock.tick(1)
 
 def draw_menu():
     font = pygame.font.Font(None, 74)
@@ -116,36 +136,81 @@ def draw_menu():
 
 maze = None
 player_pos = None
+ai_pos = None
 ai_path = None
 ai_index = None
+maze_row = SCREEN_HEIGHT // BLOCK_SIZE
+maze_col = SCREEN_WIDTH // BLOCK_SIZE
+
+def reset():
+    global maze, player_pos, ai_pos, ai_path, ai_index
+    maze = None
+    player_pos = None
+    ai_pos = None
+    ai_path = None
+    ai_index = None
 
 
 def draw_game():
-    global maze, player_pos, ai_path, ai_index, current_state
+    global maze, player_pos, ai_path, ai_index, current_state, ai_pos
     if not maze:
-        maze = generate_maze(20, 20)
+        row, col = maze_row, maze_col
+        maze = generate_maze(row, col)
         player_pos = (0, 0)
-        ai_path = a_star(maze, (0, 0), (19, 19))  # Choose algorithm based on difficulty
-        ai_index = 0
+        ai_pos = (0, 0)    
     
     draw_maze(maze)
     draw_player(player_pos)
-    draw_ai(ai_path, ai_index)
+    draw_ai_player(ai_pos)
+    
     
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_UP]:
-        move_player(0, -1)
-    elif keys[pygame.K_DOWN]:
-        move_player(0, 1)
-    elif keys[pygame.K_LEFT]:
+    if keys[pygame.K_LEFT]:
         move_player(-1, 0)
     elif keys[pygame.K_RIGHT]:
         move_player(1, 0)
+    elif keys[pygame.K_UP]:
+        move_player(0, -1)
+    elif keys[pygame.K_DOWN]:
+        move_player(0, 1)
+    elif keys[pygame.K_ESCAPE]:
+        current_state = MENU
+        reset()
+        
+        
+    if player_pos == (maze_col-1, maze_row-1):
+        current_state = MENU
+        reset()
+        
+    if ai_pos == (maze_col-1, maze_row-1):
+        current_state = MENU
+        reset()
+        
+    if not ai_path:
+        ai_path = dfs(maze, (0, 0), (maze_col-1, maze_row-1))
+        ai_index = 0
+    else:
+        if ai_index < len(ai_path):
+            ai_pos = ai_path[ai_index]
+            ai_index += 1
+            draw_ai(ai_path, ai_index)
+        else:
+            ai_path = None
+            ai_index = None
+            ai_pos = None
+            
+    
+        
+    print(ai_pos)
+    
+    
+    
+
     
     
 
 def draw_maze(maze):
-    cell_size = 30
+    cell_size = BLOCK_SIZE
     for y, row in enumerate(maze):
         for x, cell in enumerate(row):
             if cell == 1:
@@ -154,14 +219,32 @@ def draw_maze(maze):
                 pygame.draw.rect(screen, WHITE, (x*cell_size, y*cell_size, cell_size, cell_size))
 
 def draw_player(pos):
-    cell_size = 30
+    cell_size = BLOCK_SIZE
     pygame.draw.rect(screen, BLUE, (pos[0]*cell_size, pos[1]*cell_size, cell_size, cell_size))
 
+
+def draw_ai_player(pos):
+    cell_size = BLOCK_SIZE
+    pygame.draw.rect(screen, RED, (pos[0]*cell_size, pos[1]*cell_size, cell_size, cell_size))
+
 def draw_ai(path, index):
-    pass
+    for i in range(index):
+        x, y = path[i]
+        pygame.draw.rect(screen, RED, (x*BLOCK_SIZE, y*BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+        
+    
+    
 
 def move_player(dx, dy):
-    pass
+    global player_pos
+    x, y = player_pos
+    new_x, new_y = x + dx, y + dy
+    if 0 <= new_x < maze_col and 0 <= new_y < maze_row and maze[new_y][new_x] == 0:
+        player_pos = (new_x, new_y)
+        print(player_pos)
+        
+        
+    
 
 
 def draw_leaderboard():
