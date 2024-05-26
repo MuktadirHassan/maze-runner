@@ -14,7 +14,7 @@ pygame.init()
 
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
-BLOCK_SIZE = 40
+BLOCK_SIZE = 30
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Maze Solver")
@@ -30,11 +30,10 @@ BLUE = (0, 0, 255)
 MENU = 0
 GAME = 1
 DIFFICULTY = 2
-SETTINGS = 3
-LEADERBOARD = 4
+DRAW_WINNER = 3
 EXIT = -1
 
-current_state = GAME
+current_state = MENU
 
 # Maze representation
 # 1 = wall
@@ -65,6 +64,30 @@ def main():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if current_state == GAME:
+                    if event.key == pygame.K_UP:
+                        move_player(0, -1)
+                    elif event.key == pygame.K_DOWN:
+                        move_player(0, 1)
+                    elif event.key == pygame.K_LEFT:
+                        move_player(-1, 0)
+                    elif event.key == pygame.K_RIGHT:
+                        move_player(1, 0)
+                    elif event.key == pygame.K_ESCAPE:
+                        reset()
+                        current_state = MENU
+                elif current_state == MENU:
+                    if event.key == pygame.K_ESCAPE:
+                        current_state = EXIT
+                elif current_state == DIFFICULTY:
+                    if event.key == pygame.K_ESCAPE:
+                        current_state = MENU
+                elif current_state == DRAW_WINNER:
+                    if event.key == pygame.K_ESCAPE:
+                        current_state = MENU
+                
+                        
         
         screen.fill(WHITE)
         
@@ -73,15 +96,18 @@ def main():
             draw_menu()
         elif current_state == GAME:
             draw_game()
-        elif current_state == LEADERBOARD:
-            draw_leaderboard()
+        elif current_state == DIFFICULTY:
+            print("Difficulty")
+            pass
+        elif current_state == DRAW_WINNER:
+            draw_winner()
         elif current_state == EXIT:
             pygame.quit()
             sys.exit()
 
         # Update the display
         pygame.display.flip()
-        clock.tick(1)
+        clock.tick(4)
 
 def draw_menu():
     font = pygame.font.Font(None, 74)
@@ -92,20 +118,17 @@ def draw_menu():
     start_text = small_font.render("Start Game", True, BLACK)
     difficulty_text = small_font.render("Difficulty", True, BLACK)
     settings_text = small_font.render("Settings", True, BLACK)
-    leaderboard_text = small_font.render("Leaderboard", True, BLACK)
     exit_text = small_font.render("Exit", True, BLACK)
 
     screen.blit(start_text, (350, 250))
     screen.blit(difficulty_text, (350, 300))
     screen.blit(settings_text, (350, 350))
-    screen.blit(leaderboard_text, (350, 400))
-    screen.blit(exit_text, (350, 450))
+    screen.blit(exit_text, (350, 400))
 
     pygame.draw.rect(screen, BLACK, (340, 245, 200, 40), 2)
     pygame.draw.rect(screen, BLACK, (340, 295, 200, 40), 2)
     pygame.draw.rect(screen, BLACK, (340, 345, 200, 40), 2)
     pygame.draw.rect(screen, BLACK, (340, 395, 200, 40), 2)
-    pygame.draw.rect(screen, BLACK, (340, 445, 200, 40), 2)
 
     mouse = pygame.mouse.get_pos()
     click = pygame.mouse.get_pressed()
@@ -126,83 +149,108 @@ def draw_menu():
     elif 340 <= mouse[0] <= 540 and 395 <= mouse[1] <= 435:
         pygame.draw.rect(screen, BLACK, (340, 395, 200, 40), 4)
         if click[0] == 1:
-            current_state = LEADERBOARD
-    elif 340 <= mouse[0] <= 540 and 445 <= mouse[1] <= 485:
-        pygame.draw.rect(screen, BLACK, (340, 445, 200, 40), 4)
-        if click[0] == 1:
             current_state = EXIT
+            
+
 
     
-
+# Game variables
 maze = None
-player_pos = None
-ai_pos = None
-ai_path = None
-ai_index = None
+player_pos = (0, 0)
+ai_pos = (0, 0)
+ai_path = []
+ai_index = 0
 maze_row = SCREEN_HEIGHT // BLOCK_SIZE
 maze_col = SCREEN_WIDTH // BLOCK_SIZE
+player_win = 0
+ai_win = 0
 
 def reset():
-    global maze, player_pos, ai_pos, ai_path, ai_index
+    global maze, player_pos, ai_pos, ai_path, ai_index, GAME_OVER
     maze = None
-    player_pos = None
-    ai_pos = None
-    ai_path = None
-    ai_index = None
+    player_pos = (0, 0)
+    ai_pos = (0, 0)
+    ai_path = []
+    ai_index = 0
+    GAME_OVER = 0
+    
+def ai_win_game():
+    global ai_win
+    ai_win += 1
+    
+    
+def player_win_game():
+    global player_win
+    player_win += 1
+    
+GAME_OVER = 0
+    
+def draw_winner():
+    reset()
+    global player_win, ai_win
+    font = pygame.font.Font(None, 74)
+    text = font.render("Player Win: {} AI Win: {}".format(player_win, ai_win), True, BLACK)
+    screen.blit(text, (200, 100))
+    
+    # Go to menu
+    menu_font = pygame.font.Font(None, 32)
+    menu_text = menu_font.render("Press Esc for main menu", True, BLACK)
+    screen.blit(menu_text, (350, 250))
+    pygame.draw.rect(screen, BLACK, (340, 245, 200, 40), 2)
+    
+
+    
+    
+    
+    
 
 
 def draw_game():
-    global maze, player_pos, ai_path, ai_index, current_state, ai_pos
+    global maze, player_pos, ai_path, ai_index, current_state, ai_pos, GAME_OVER
+    # Generate the maze and draw it
     if not maze:
         row, col = maze_row, maze_col
         maze = generate_maze(row, col)
-        player_pos = (0, 0)
-        ai_pos = (0, 0)    
+    
     
     draw_maze(maze)
     draw_player(player_pos)
     draw_ai_player(ai_pos)
-    
-    
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]:
-        move_player(-1, 0)
-    elif keys[pygame.K_RIGHT]:
-        move_player(1, 0)
-    elif keys[pygame.K_UP]:
-        move_player(0, -1)
-    elif keys[pygame.K_DOWN]:
-        move_player(0, 1)
-    elif keys[pygame.K_ESCAPE]:
-        current_state = MENU
-        reset()
-        
+       
         
     if player_pos == (maze_col-1, maze_row-1):
-        current_state = MENU
-        reset()
+        GAME_OVER = 1
+        player_win_game()
+        current_state = DRAW_WINNER        
+        return
+  
+    ai_move()
+  
+    
+
+def ai_move():
+    global ai_pos, ai_path, ai_index, GAME_OVER, current_state
+    if ai_index < len(ai_path):
+        ai_pos = ai_path[ai_index]
+        ai_index += 1
+    else:
+        ai_index = 0
+        ai_path = dfs(maze, (0, 0), (maze_col-1, maze_row-1))
+        ai_pos = ai_path[ai_index]
+        ai_index += 1
+        print(ai_path)
         
     if ai_pos == (maze_col-1, maze_row-1):
-        current_state = MENU
-        reset()
-        
-    if not ai_path:
-        ai_path = dfs(maze, (0, 0), (maze_col-1, maze_row-1))
-        ai_index = 0
-    else:
-        if ai_index < len(ai_path):
-            ai_pos = ai_path[ai_index]
-            ai_index += 1
-            draw_ai(ai_path, ai_index)
-        else:
-            ai_path = None
-            ai_index = None
-            ai_pos = None
-            
+        GAME_OVER = 1
+        ai_win_game()
+        current_state = DRAW_WINNER
+        return
     
-        
     print(ai_pos)
     
+    draw_ai(ai_path, ai_index)
+        
+
     
     
 
@@ -217,6 +265,9 @@ def draw_maze(maze):
                 pygame.draw.rect(screen, BLACK, (x*cell_size, y*cell_size, cell_size, cell_size))
             else:
                 pygame.draw.rect(screen, WHITE, (x*cell_size, y*cell_size, cell_size, cell_size))
+                
+    # mark destination
+    pygame.draw.rect(screen, GREEN, (maze_col*cell_size-cell_size, maze_row*cell_size-cell_size, cell_size, cell_size))
 
 def draw_player(pos):
     cell_size = BLOCK_SIZE

@@ -12,7 +12,8 @@ def generate_maze(row, col):
     # Start and end
     maze[0][0] = 0
     maze[row-1][col-1] = 0 
-    
+    maze[row-1][col-2] = 0 
+    # maze[row-2][col-1] = 0
     # Generate maze
     stack = [(0, 0)]
     while stack:
