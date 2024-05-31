@@ -45,6 +45,26 @@ def dfs(maze, start, end):
     path.reverse()
     return path
 
+def dfs_revised(maze, start, end):
+    # Depth First Search
+    # Start and end are tuples of (x, y)
+    stack = [(start, [start])]
+    visited = set()
+    all_paths = []
 
+    while stack:
+        current, path = stack.pop()
+        all_paths.append(path)
+        
+        if current == end:
+            break
+        
+        x, y = current
+        visited.add(current)
+        
+        for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < len(maze[0]) and 0 <= ny < len(maze) and maze[ny][nx] == 0 and (nx, ny) not in visited:
+                stack.append(((nx, ny), path + [(nx, ny)]))
 
-
+    return all_paths
