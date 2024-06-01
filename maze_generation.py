@@ -32,7 +32,7 @@ def generate_maze(row, col):
         else:
             stack.pop()
 
-    print_maze(maze)
+    # print_maze(maze)
     return maze
 
 def print_maze(maze):
