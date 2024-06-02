@@ -39,6 +39,7 @@ screens = {
     "menu": 0,
     "game": 1,
     "difficulty": 2, 
+    "winner": 3,
     "exit": -1
 }
 
@@ -62,6 +63,8 @@ def main():
         MenuEntry(200, 400, 400, 50, colors["black"], "Expert", colors["white"], lambda: update_difficulty_to("expert"))
     ]
     
+    start_again_button = MenuEntry(200, 200, 400, 50, colors["black"], "Play Again", colors["white"], start_game)
+    
 
     while True:
         
@@ -82,6 +85,9 @@ def main():
                 for button in buttons_difficulty:
                     if button.is_mouse_over():
                         button.click()
+            elif event.type == pygame.MOUSEBUTTONDOWN and current_screen == screens["winner"]:
+                if start_again_button.is_mouse_over():
+                    start_again_button.click()
             elif event.type == pygame.KEYDOWN:
                 if current_screen == screens["game"] and event.key == pygame.K_ESCAPE:
                     current_screen = screens["menu"]
@@ -108,10 +114,13 @@ def main():
             draw_game()
         elif current_screen == screens["difficulty"]:
             draw_difficulty_selection(buttons_difficulty)
+        elif current_screen == screens["winner"]:
+            draw_winner(start_again_button)
         elif current_screen == screens["exit"]:
             logger("Exiting...")
             pygame.quit()
             sys.exit()
+            
         
         # update the screen
         pygame.display.update()
@@ -165,19 +174,20 @@ def draw_menu(buttons):
             button.color = colors["black"]
     
     
-player, ai, maze = None, None, None
-
+player, ai, maze, path = None, None, None, None
+game_over = False
  
 
 def start_game():
-    global current_screen, player, ai, maze, maze_size
+    global current_screen, player, ai, maze, maze_size, path, game_over
     current_screen = screens["game"]
     logger("Starting game...", maze_size)
+    game_over = False
     player = Player(0, 0)
     ai = Player(0, 0)
     maze = Maze(generate_maze(maze_size[1], maze_size[0]))
-        # solve maze
-        # path = bfs(maze, (0, 0), (maze_size[0] - 1, maze_size[1] - 1))
+    # solve maze
+    path = bfs(maze.maze, (0, 0), (maze_size[0] - 1, maze_size[1] - 1))
         
 
 
@@ -185,16 +195,68 @@ def exit_game():
     global current_screen
     current_screen = screens["exit"]
     
-    
+
+scores = {
+    "player": 0,
+    "ai": 0
+}
+winner = None
     
 def draw_game():
-    global player, ai, maze
-    maze.draw()
+    global player, ai, maze, game_over, current_screen, winner
     
+    maze.draw()
     player.draw(colors["green"])
     ai.draw(colors["blue"])
     
+    if player.is_at_goal():
+        game_over = True
+        winner = "You"
+        current_screen = screens["winner"]
+        
+        
+    elif ai.is_at_goal():
+        font = pygame.font.Font(None, 64)
+        text = font.render("You Lose!", True, colors["black"])
+        screen.blit(text, (screen_width // 2 - text.get_width() // 2, 100))
+        update_score("ai")
+
+def draw_winner(button):
+    screen.fill(colors["white"])
+    global winner, current_screen, player, ai, game_over, scores
+    if game_over:
+        scores["player"] += 1
+        player.reset()
+        ai.reset()
+    game_over = False
+    font = pygame.font.Font(None, 64)
+    winner_text = lambda: winner == "You" and "You Win!" or "You Lose!"
+    text = font.render(f"{winner_text()}", True, colors["black"])
+    player_score = font.render(f"Player: {scores['player']}", True, colors["black"])
+    ai_score = font.render(f"AI: {scores['ai']}", True, colors["black"])
+    screen.blit(text, (screen_width // 2 - text.get_width() // 2, 100))
+    screen.blit(player_score, (screen_width // 2 - player_score.get_width() // 2, 400))
+    screen.blit(ai_score, (screen_width // 2 - ai_score.get_width() // 2, 300))    
     
+    # hover effect
+    if button.is_mouse_over():
+        button.color = colors["grey"]
+    else:
+        button.color = colors["black"]
+    button.draw()
+    
+    
+        
+
+def update_score(player):
+    global scores
+    if player == "player":
+        scores["player"] += 1
+    else:
+        scores["ai"] += 1
+    logger(f"Player: {scores['player']} AI: {scores['ai']}")        
+
+
     
     
 class Maze:
