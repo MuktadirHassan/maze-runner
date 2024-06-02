@@ -145,7 +145,7 @@ def draw_menu(buttons):
     # Draw the menu
     # Draw the title
     font = pygame.font.Font(None, 64)
-    text = font.render("Maze Solver", True, colors["black"])
+    text = font.render("Maze Runner", True, colors["black"])
     screen.blit(text, (screen_width // 2 - text.get_width() // 2, 100))
     for button in buttons:
         button.draw()
