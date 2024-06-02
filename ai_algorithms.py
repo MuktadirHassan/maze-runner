@@ -72,3 +72,41 @@ def bfs(maze, start, end):
     return path
 
 
+# returns a list of tuples
+# each tuple is a pair of coordinates (x, y)
+# representing the path from start to end
+# using bfs, all paths as it traverses the maze, including incorrect paths
+def bfs_all_paths(maze, start, end):
+    # Breadth First Search
+    # Start and end are tuples of (x, y)
+    queue = deque([[start]])
+    visited = set()
+    all_paths = []
+
+    while queue:
+        path = queue.popleft()
+        current = path[-1]
+        x, y = current
+
+        if current in visited:
+            continue
+
+        visited.add(current)
+
+        # Save the current path to all_paths
+        all_paths.append(path)
+
+        # If the current position is the end, continue to explore other paths
+        if current == end:
+            continue
+
+        for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < len(maze[0]) and 0 <= ny < len(maze) and maze[ny][nx] == 0 and (nx, ny) not in visited:
+                new_path = list(path)
+                new_path.append((nx, ny))
+                queue.append(new_path)
+
+    # Flatten the list of paths into a list of tuples
+    flattened_paths = [coord for path in all_paths for coord in path]
+    return flattened_paths
