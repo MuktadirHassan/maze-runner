@@ -87,6 +87,16 @@ def main():
                     current_screen = screens["menu"]
                     player.reset()
                     ai.reset()
+                # player movement
+                elif current_screen == screens["game"]:
+                    if event.key == pygame.K_UP and player.is_valid_move(0, -1):
+                        player.move(0, -1)
+                    elif event.key == pygame.K_DOWN and player.is_valid_move(0, 1):
+                        player.move(0, 1)
+                    elif event.key == pygame.K_LEFT and player.is_valid_move(-1, 0):
+                        player.move(-1, 0)
+                    elif event.key == pygame.K_RIGHT and player.is_valid_move(1, 0):
+                        player.move(1, 0)
                     
                 
 
@@ -124,7 +134,7 @@ difficulties = {
     "expert": 100	
 }
 
-difficulty = difficulties["expert"]
+difficulty = difficulties["easy"]
 block_size = 500 // difficulty
 maze_size = (screen_width // block_size, screen_height // block_size)
 
@@ -181,6 +191,11 @@ def draw_game():
     global player, ai, maze
     maze.draw()
     
+    player.draw(colors["green"])
+    ai.draw(colors["blue"])
+    
+    
+    
     
 class Maze:
     def __init__(self, maze):
@@ -209,9 +224,10 @@ class Player:
     def move(self, dx, dy):
         self.x += dx
         self.y += dy
+        logger(self)
 
-    def draw(self):
-        pygame.draw.rect(screen, colors["green"], (self.x * block_size, self.y * block_size, block_size, block_size))
+    def draw(self, color=colors["red"]):
+        pygame.draw.rect(screen, color, (self.x * block_size, self.y * block_size, block_size, block_size))
         
     def is_at(self, x, y):
         return self.x == x and self.y == y
@@ -225,7 +241,7 @@ class Player:
     def is_valid_move(self, dx, dy):
         new_x = self.x + dx
         new_y = self.y + dy
-        return 0 <= new_x < maze_size[0] and 0 <= new_y < maze_size[1] and maze[new_y][new_x] == 0
+        return 0 <= new_x < maze_size[0] and 0 <= new_y < maze_size[1] and maze.maze[new_y][new_x] == 0
     
     def move_to(self, x, y):
         self.x = x
