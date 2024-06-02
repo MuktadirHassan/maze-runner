@@ -2,7 +2,7 @@ import pygame
 import sys
 
 # Import the algorithms and maze generation functions
-from ai_algorithms import dfs, bfs
+from ai_algorithms import dfs, bfs, bfs_all_paths
 from maze_generation import generate_maze
 
 pygame.init()
@@ -12,7 +12,7 @@ screen_height = 600
 frame_per_second = 60
 
 screen = pygame.display.set_mode((screen_width, screen_height))
-pygame.display.set_caption("Maze Solver")
+pygame.display.set_caption("Maze Runner")
 
 # colors
 colors = {
@@ -168,7 +168,8 @@ def start_game():
     ai = Player(0, 0)
     maze = Maze(generate_maze(maze_size[1], maze_size[0]))
     # solve maze
-    path = bfs(maze.maze, (0, 0), (maze_size[0] - 1, maze_size[1] - 1))
+    path = bfs(maze.maze, (0, 0), (maze_size[0] - 1, maze_size[1] - 1)) 
+    return
 
 def exit_game():
     global current_screen
@@ -194,7 +195,7 @@ def draw_game(ai_move_counter):
         if len(path) > 0 and ai_move_counter % move_interval == 0:
             next_move = path.pop(0)
             ai.move(next_move[0] - ai.x, next_move[1] - ai.y)
-
+            
     if player.is_at_goal():
         game_over = True
         winner = "You"
@@ -261,7 +262,6 @@ class Player:
     def move(self, dx, dy):
         self.x += dx
         self.y += dy
-        logger(self)
 
     def draw(self, color=colors["red"]):
         pygame.draw.rect(screen, color, (self.x * block_size, self.y * block_size, block_size, block_size))
