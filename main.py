@@ -1,8 +1,3 @@
-# Python Maze Solver
-# Author: @MuktadirHassan
-# Description: Compete against the computer to solve the maze first.
-
-
 import pygame
 import sys
 
@@ -12,274 +7,322 @@ from maze_generation import generate_maze
 
 pygame.init()
 
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-BLOCK_SIZE = 30
+screen_width = 800
+screen_height = 600
+frame_per_second = 60
 
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("Maze Solver")
 
+# colors
+colors = {
+    "white": (255, 255, 255),
+    "black": (0, 0, 0),
+    "red": (255, 0, 0),
+    "green": (0, 255, 0),
+    "blue": (0, 0, 255),
+    "grey": (128, 128, 128),
+    "teal": (0, 128, 128)
+}
 
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
+screens = {
+    "menu": 0,
+    "game": 1,
+    "difficulty": 2,
+    "winner": 3,
+    "exit": -1
+}
 
-# Game states
-MENU = 0
-GAME = 1
-DIFFICULTY = 2
-DRAW_WINNER = 3
-EXIT = -1
-
-current_state = MENU
-
-
+current_screen = screens["menu"]
 
 def main():
-    global current_state
     clock = pygame.time.Clock()
+    global player, ai, maze, current_screen
+    # Draw the buttons
+    buttons = [
+        MenuEntry(200, 200, 400, 50, colors["black"], "Play", colors["white"], start_game),
+        MenuEntry(200, 250, 400, 50, colors["black"], "Difficulty", colors["white"], show_difficulty_menu),
+        MenuEntry(200, 300, 400, 50, colors["black"], "Exit", colors["white"], exit_game)
+    ]
+
+    buttons_difficulty = [
+        MenuEntry(200, 200, 400, 50, colors["black"], "Noob", colors["white"], lambda: update_difficulty_to("noob")),
+        MenuEntry(200, 250, 400, 50, colors["black"], "Easy", colors["white"], lambda: update_difficulty_to("easy")),
+        MenuEntry(200, 300, 400, 50, colors["black"], "Medium", colors["white"], lambda: update_difficulty_to("medium")),
+        MenuEntry(200, 350, 400, 50, colors["black"], "Hard", colors["white"], lambda: update_difficulty_to("hard")),
+        MenuEntry(200, 400, 400, 50, colors["black"], "Expert", colors["white"], lambda: update_difficulty_to("expert"))
+    ]
+
+    start_again_button = MenuEntry(200, 200, 400, 50, colors["black"], "Play Again", colors["white"], start_game)
+
+    ai_move_counter = 0
 
     while True:
+        # The game loop, runs every frame
+        clock.tick(frame_per_second)
+        ai_move_counter += 1
+
+        # listen for events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                logger("Exiting...")
                 pygame.quit()
                 sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN and current_screen == screens["menu"]:
+                for button in buttons:
+                    if button.is_mouse_over():
+                        button.click()
+            elif event.type == pygame.MOUSEBUTTONDOWN and current_screen == screens["difficulty"]:
+                for button in buttons_difficulty:
+                    if button.is_mouse_over():
+                        button.click()
+            elif event.type == pygame.MOUSEBUTTONDOWN and current_screen == screens["winner"]:
+                if start_again_button.is_mouse_over():
+                    start_again_button.click()
             elif event.type == pygame.KEYDOWN:
-                if current_state == GAME:
-                    if event.key == pygame.K_UP:
-                        move_player(0, -1)
-                    elif event.key == pygame.K_DOWN:
-                        move_player(0, 1)
-                    elif event.key == pygame.K_LEFT:
-                        move_player(-1, 0)
-                    elif event.key == pygame.K_RIGHT:
-                        move_player(1, 0)
-                    elif event.key == pygame.K_ESCAPE:
-                        reset()
-                        current_state = MENU
-                elif current_state == MENU:
-                    if event.key == pygame.K_ESCAPE:
-                        current_state = EXIT
-                elif current_state == DIFFICULTY:
-                    if event.key == pygame.K_ESCAPE:
-                        current_state = MENU
-                elif current_state == DRAW_WINNER:
-                    if event.key == pygame.K_ESCAPE:
-                        current_state = MENU
-                
-                        
-        
-        screen.fill(WHITE)
-        
-        # Draw the current state
-        if current_state == MENU:
-            draw_menu()
-        elif current_state == GAME:
-            draw_game()
-        elif current_state == DIFFICULTY:
-            print("Difficulty")
-            pass
-        elif current_state == DRAW_WINNER:
-            draw_winner()
-        elif current_state == EXIT:
+                if current_screen == screens["game"] and event.key == pygame.K_ESCAPE:
+                    current_screen = screens["menu"]
+                    player.reset()
+                    ai.reset()
+                # player movement
+                elif current_screen == screens["game"]:
+                    if event.key == pygame.K_UP and player.is_valid_move(0, -1):
+                        player.move(0, -1)
+                    elif event.key == pygame.K_DOWN and player.is_valid_move(0, 1):
+                        player.move(0, 1)
+                    elif event.key == pygame.K_LEFT and player.is_valid_move(-1, 0):
+                        player.move(-1, 0)
+                    elif event.key == pygame.K_RIGHT and player.is_valid_move(1, 0):
+                        player.move(1, 0)
+
+        screen.fill(colors["white"])
+        if current_screen == screens["menu"]:
+            draw_menu(buttons)
+        elif current_screen == screens["game"]:
+            draw_game(ai_move_counter)
+        elif current_screen == screens["difficulty"]:
+            draw_difficulty_selection(buttons_difficulty)
+        elif current_screen == screens["winner"]:
+            draw_winner(start_again_button)
+        elif current_screen == screens["exit"]:
+            logger("Exiting...")
             pygame.quit()
             sys.exit()
 
-        # Update the display
-        pygame.display.flip()
-        clock.tick(30)
-
-def draw_menu():
-    font = pygame.font.Font(None, 74)
-    text = font.render("Maze Runner", True, BLACK)
-    screen.blit(text, (200, 100))
-
-    small_font = pygame.font.Font(None, 32)
-    start_text = small_font.render("Start Game", True, BLACK)
-    difficulty_text = small_font.render("Difficulty", True, BLACK)
-    settings_text = small_font.render("Settings", True, BLACK)
-    exit_text = small_font.render("Exit", True, BLACK)
-
-    screen.blit(start_text, (350, 250))
-    screen.blit(difficulty_text, (350, 300))
-    screen.blit(settings_text, (350, 350))
-    screen.blit(exit_text, (350, 400))
-
-    pygame.draw.rect(screen, BLACK, (340, 245, 200, 40), 2)
-    pygame.draw.rect(screen, BLACK, (340, 295, 200, 40), 2)
-    pygame.draw.rect(screen, BLACK, (340, 345, 200, 40), 2)
-    pygame.draw.rect(screen, BLACK, (340, 395, 200, 40), 2)
-
-    mouse = pygame.mouse.get_pos()
-    click = pygame.mouse.get_pressed()
-
-    if 340 <= mouse[0] <= 540 and 245 <= mouse[1] <= 285:
-        pygame.draw.rect(screen, BLACK, (340, 245, 200, 40), 4)
-        if click[0] == 1:
-            global current_state
-            current_state = GAME
-    elif 340 <= mouse[0] <= 540 and 295 <= mouse[1] <= 335:
-        pygame.draw.rect(screen, BLACK, (340, 295, 200, 40), 4)
-        if click[0] == 1:
-            pass
-    elif 340 <= mouse[0] <= 540 and 345 <= mouse[1] <= 385:
-        pygame.draw.rect(screen, BLACK, (340, 345, 200, 40), 4)
-        if click[0] == 1:
-            pass
-    elif 340 <= mouse[0] <= 540 and 395 <= mouse[1] <= 435:
-        pygame.draw.rect(screen, BLACK, (340, 395, 200, 40), 4)
-        if click[0] == 1:
-            current_state = EXIT
-            
+        # update the screen
+        pygame.display.update()
 
 
-    
-# Game variables
-maze = None
-player_pos = (0, 0)
-ai_pos = (0, 0)
-ai_path = []
-ai_index = 0
-maze_row = SCREEN_HEIGHT // BLOCK_SIZE
-maze_col = SCREEN_WIDTH // BLOCK_SIZE
-player_win = 0
-ai_win = 0
+def show_difficulty_menu():
+    global current_screen
+    current_screen = screens["difficulty"]
 
-def reset():
-    global maze, player_pos, ai_pos, ai_path, ai_index, GAME_OVER
-    maze = None
-    player_pos = (0, 0)
-    ai_pos = (0, 0)
-    ai_path = []
-    ai_index = 0
-    GAME_OVER = 0
-    
-def ai_win_game():
-    global ai_win
-    ai_win += 1
-    
-    
-def player_win_game():
-    global player_win
-    player_win += 1
-    
-GAME_OVER = 0
-    
-def draw_winner():
-    reset()
-    global player_win, ai_win
-    font = pygame.font.Font(None, 74)
-    text = font.render("Player Win: {} AI Win: {}".format(player_win, ai_win), True, BLACK)
-    screen.blit(text, (200, 100))
-    
-    # Go to menu
-    menu_font = pygame.font.Font(None, 32)
-    menu_text = menu_font.render("Press Esc for main menu", True, BLACK)
-    screen.blit(menu_text, (350, 250))
-    pygame.draw.rect(screen, BLACK, (340, 245, 200, 40), 2)
-    
+def draw_difficulty_selection(buttons):
+    global difficulty
+    draw_menu(buttons)
 
-    
-    
-    
-    
+difficulties = {
+    "noob": 5,
+    "easy": 10,
+    "medium": 25,
+    "hard": 50,
+    "expert": 100
+}
 
+difficulty = difficulties["easy"]
+block_size = 500 // difficulty
+maze_size = (screen_width // block_size, screen_height // block_size)
 
-def draw_game():
-    global maze, player_pos, ai_path, ai_index, current_state, ai_pos, GAME_OVER
-    # Generate the maze and draw it
-    if not maze:
-        row, col = maze_row, maze_col
-        maze = generate_maze(row, col)
-    
-    
-    draw_maze(maze)
-    draw_player(player_pos)
-    draw_ai_player(ai_pos)
-       
-        
-    if player_pos == (maze_col-1, maze_row-1):
-        GAME_OVER = 1
-        player_win_game()
-        current_state = DRAW_WINNER        
-        return
-  
-    ai_move()
-  
-    
+def update_difficulty_to(difficulty_level):
+    logger(f"Updating difficulty to {difficulty_level}")
+    global difficulty, current_screen, block_size, maze_size
+    difficulty = difficulties[difficulty_level]
+    block_size = 500 // difficulty
+    maze_size = (screen_width // block_size, screen_height // block_size)
+    current_screen = screens["menu"]
 
-def ai_move():
-    global ai_pos, ai_path, ai_index, GAME_OVER, current_state
-    if ai_index < len(ai_path):
-        ai_pos = ai_path[ai_index]
-        ai_index += 1
+def draw_menu(buttons):
+    # Draw the menu
+    # Draw the title
+    font = pygame.font.Font(None, 64)
+    text = font.render("Maze Solver", True, colors["black"])
+    screen.blit(text, (screen_width // 2 - text.get_width() // 2, 100))
+    for button in buttons:
+        button.draw()
+
+        # hover effect
+        if button.is_mouse_over():
+            button.color = colors["grey"]
+        else:
+            button.color = colors["black"]
+
+player, ai, maze, path = None, None, None, None
+game_over = False
+
+def start_game():
+    global current_screen, player, ai, maze, maze_size, path, game_over
+    current_screen = screens["game"]
+    logger("Starting game...", maze_size)
+    game_over = False
+    player = Player(0, 0)
+    ai = Player(0, 0)
+    maze = Maze(generate_maze(maze_size[1], maze_size[0]))
+    # solve maze
+    path = bfs(maze.maze, (0, 0), (maze_size[0] - 1, maze_size[1] - 1))
+
+def exit_game():
+    global current_screen
+    current_screen = screens["exit"]
+
+scores = {
+    "player": 0,
+    "ai": 0
+}
+winner = None
+
+def draw_game(ai_move_counter):
+    global player, ai, maze, game_over, current_screen, winner
+
+    maze.draw()
+    player.draw(colors["green"])
+    ai.draw(colors["blue"])
+
+    move_interval = 20  # number of frames between AI moves
+
+    # AI should move towards the goal using the path
+    if not game_over:
+        if len(path) > 0 and ai_move_counter % move_interval == 0:
+            next_move = path.pop(0)
+            ai.move(next_move[0] - ai.x, next_move[1] - ai.y)
+
+    if player.is_at_goal():
+        game_over = True
+        winner = "You"
+        current_screen = screens["winner"]
+    elif ai.is_at_goal():
+        game_over = True
+        winner = "AI"
+        current_screen = screens["winner"]
+
+def draw_winner(button):
+    screen.fill(colors["white"])
+    global winner, current_screen, player, ai, game_over, scores
+    if game_over and winner == "You":
+        scores["player"] += 1
+        player.reset()
+        ai.reset()
+    elif game_over and winner == "AI":
+        scores["ai"] += 1
+        player.reset()
+        ai.reset()
+    game_over = False
+    font = pygame.font.Font(None, 64)
+    winner_text = lambda: winner == "You" and "You Win!" or "You Lose!"
+    text = font.render(f"{winner_text()}", True, colors["black"])
+    player_score = font.render(f"Player: {scores['player']}", True, colors["black"])
+    ai_score = font.render(f"AI: {scores['ai']}", True, colors["black"])
+    screen.blit(text, (screen_width // 2 - text.get_width() // 2, 100))
+    screen.blit(player_score, (screen_width // 2 - player_score.get_width() // 2, 400))
+    screen.blit(ai_score, (screen_width // 2 - ai_score.get_width() // 2, 300))
+
+    # hover effect
+    if button.is_mouse_over():
+        button.color = colors["grey"]
     else:
-        ai_index = 0
-        ai_path = bfs(maze, (0, 0), (maze_col-1, maze_row-1))
-        ai_pos = ai_path[ai_index]
-        ai_index += 1
-        print(ai_path)
-        
-    if ai_pos == (maze_col-1, maze_row-1):
-        GAME_OVER = 1
-        ai_win_game()
-        current_state = DRAW_WINNER
-        return
-    
-    print(ai_pos)
-    
-    draw_ai(ai_path, ai_index)
-        
+        button.color = colors["black"]
+    button.draw()
 
-    
-    
+def update_score(player):
+    global scores
+    if player == "player":
+        scores["player"] += 1
+    else:
+        scores["ai"] += 1
+    logger(f"Player: {scores['player']} AI: {scores['ai']}")
 
-    
-    
+class Maze:
+    def __init__(self, maze):
+        self.maze = maze
 
-def draw_maze(maze):
-    cell_size = BLOCK_SIZE
-    for y, row in enumerate(maze):
-        for x, cell in enumerate(row):
-            if cell == 1:
-                pygame.draw.rect(screen, BLACK, (x*cell_size, y*cell_size, cell_size, cell_size))
-            else:
-                pygame.draw.rect(screen, WHITE, (x*cell_size, y*cell_size, cell_size, cell_size))
-                
-    # mark destination
-    pygame.draw.rect(screen, GREEN, (maze_col*cell_size-cell_size, maze_row*cell_size-cell_size, cell_size, cell_size))
+    def draw(self):
+        for y in range(len(self.maze)):
+            for x in range(len(self.maze[y])):
+                color = colors["black"] if self.maze[y][x] == 1 else colors["white"]
+                pygame.draw.rect(screen, color, (x * block_size, y * block_size, block_size, block_size))
 
-def draw_player(pos):
-    cell_size = BLOCK_SIZE
-    pygame.draw.rect(screen, BLUE, (pos[0]*cell_size, pos[1]*cell_size, cell_size, cell_size))
+# the whole maze is a grid of blocks
+# 2D array of blocks
+# Player position is a single block in the grid
+class Player:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
 
+    def move(self, dx, dy):
+        self.x += dx
+        self.y += dy
+        logger(self)
 
-def draw_ai_player(pos):
-    cell_size = BLOCK_SIZE
-    pygame.draw.rect(screen, RED, (pos[0]*cell_size, pos[1]*cell_size, cell_size, cell_size))
+    def draw(self, color=colors["red"]):
+        pygame.draw.rect(screen, color, (self.x * block_size, self.y * block_size, block_size, block_size))
 
-def draw_ai(path, index):
-    for i in range(index):
-        x, y = path[i]
-        pygame.draw.rect(screen, RED, (x*BLOCK_SIZE, y*BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
-        
-    
-    
+    def is_at(self, x, y):
+        return self.x == x and self.y == y
 
-def move_player(dx, dy):
-    global player_pos
-    x, y = player_pos
-    new_x, new_y = x + dx, y + dy
-    if 0 <= new_x < maze_col and 0 <= new_y < maze_row and maze[new_y][new_x] == 0:
-        player_pos = (new_x, new_y)
-        print(player_pos)
-        
+    def is_at_goal(self):
+        return self.is_at(maze_size[0] - 1, maze_size[1] - 1)
 
+    def is_at_start(self):
+        return self.is_at(0, 0)
 
+    def is_valid_move(self, dx, dy):
+        new_x = self.x + dx
+        new_y = self.y + dy
+        return 0 <= new_x < maze_size[0] and 0 <= new_y < maze_size[1] and maze.maze[new_y][new_x] == 0
 
+    def move_to(self, x, y):
+        self.x = x
+        self.y = y
 
+    def reset(self):
+        self.move_to(0, 0)
+
+    def __str__(self):
+        return f"Player at ({self.x}, {self.y})"
+
+    def __repr__(self):
+        return self.__str__()
+
+# Adds a menu entry to the screen
+class MenuEntry:
+    def __init__(self, x, y, width, height, color, text, text_color, action):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.color = color
+        self.text = text
+        self.text_color = text_color
+        self.action = action
+
+    def draw(self):
+        pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height))
+        font = pygame.font.Font(None, 32)
+        text = font.render(self.text, True, self.text_color)
+        screen.blit(text, (self.x + self.width // 2 - text.get_width() // 2, self.y + self.height // 2 - text.get_height() // 2))
+
+    def is_mouse_over(self):
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        return self.x <= mouse_x <= self.x + self.width and self.y <= mouse_y <= self.y + self.height
+
+    def click(self):
+        self.action()
+
+# Used to print debug messages
+is_debug = True
+def logger(*args):
+    if is_debug:
+        print(*args)
 
 if __name__ == "__main__":
     main()
