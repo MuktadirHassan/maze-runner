@@ -3,7 +3,7 @@
 Maze Runner is a simple game where the player and an AI navigate a maze to reach the end. The player can choose the difficulty of the maze and the AI's intelligence. The player wins if they reach the end before the AI, and the AI wins if it reaches the end before the player.
 
 <!-- Image of Game -->
-![Maze Runner](https://raw.githubusercontent.com/MuktadirHassan/maze-runner/main/docs/intro.png)
+![Maze Runner](https://raw.githubusercontent.com/MuktadirHassan/maze-runner/main/docs/maze-runner.png)
 
 # Installation
 ## Windows
